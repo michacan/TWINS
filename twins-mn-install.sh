@@ -58,9 +58,7 @@ function install_updates_and_firewall() {
 
 function download_mn_wallet(){
 	WALLETFILENAME="${WALLETLINK##*/}"
-#	
-echo "download_mn_wallet()\nWALLETFILENAME = ${WALLETFILENAME}"
-	echo -en " DownLoading wallet ${WALLETFILENAME} \r"
+	echo -en " Downloading wallet ${WALLETFILENAME} \r"
 	cd ~ && wget $WALLETLINK &>>${LOGFILE}
 	[ $? -eq 0 ] && ec=0 || ec=1
 	[ $ec -eq 0 ] && echo -en $STATUS0 || echo -en $STATUS1
@@ -100,8 +98,6 @@ function create_config_file(){
 	echo "Enter masternode private key for this node"
 	echo -e "Hint: you can get private key in QTWallet => Tools => Debug Console\n -- by running command \"masternode genkey\"\nThen press [ENTER]:"
 	read PRIVKEY
-#	
-echo -e "PRIVKEY = ${PRIVKEY}"
 	CONF_DIR=~/$DATADIRNAME\/
 	IP=$(hostname -I | cut -d " " -f1)
 	mkdir -p $CONF_DIR
@@ -128,7 +124,6 @@ function create_service_config_file(){
 	echo "[Unit]" >> $SERVICEFILE
 	echo "Description=${PROJ_U} service" >> $SERVICEFILE
 	echo "After=network.target" >> $SERVICEFILE
-	
 	echo "[Service]" >> $SERVICEFILE
 	echo "User=root" >> $SERVICEFILE
 	echo "Group=root" >> $SERVICEFILE
@@ -141,7 +136,6 @@ function create_service_config_file(){
 	echo "TimeoutStartSec=10s" >> $SERVICEFILE
 	echo "StartLimitInterval=120s" >> $SERVICEFILE
 	echo "StartLimitBurst=5" >> $SERVICEFILE
-	
 	echo "[Install]" >> $SERVICEFILE
 	echo "WantedBy=multi-user.target" >> $SERVICEFILE
 }
