@@ -54,7 +54,6 @@ function install_updates_and_firewall() {
 		sudo ufw allow $PORT
 		echo "y" | sudo ufw enable
 		sudo ufw status
-		sudo apt install unzip
 	fi
 }
 
@@ -80,10 +79,20 @@ function delete_downloaded_file(){
 	[ $ec -eq 0 ] && echo -en $STATUS0 || echo -en $STATUS1
 }
 
+function install_unzip_if_needed(){
+	if ! [ -x "$(command -v unzip)" ];
+	then
+		echo -en "\n Installing unzip \r"
+		sudo apt install unzip
+		[ $? -eq 0 ] && ec=0 || ec=1
+		[ $ec -eq 0 ] && echo -en $STATUS0 || echo -en $STATUS1
+	fi
+}
+
 function install_snapshot(){
-	#SNAPSHOTFNAME
-	#SNAPSHOTLINK
+	install_unzip_if_needed
 	#Change directiory to the DATA FOLDER
+	mkdir -p $DATADIRNAME
 	cd $DATADIRNAME
 	
 	#Download snapshot file
