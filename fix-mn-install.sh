@@ -18,8 +18,12 @@ VERSION="${RELASE_TAG##${PROJECT}_v}"
 
 LOGFILENAME=$PROJECT"-mn-install.log"
 
-# WALLET(DAEMON) LINKS
-WALLETLINK=$GITHUB_URL"/releases/download/"$PROJECT"_v"$VERSION"/"$PROJECT"-"$VERSION"-MN-x86_64-linux-gnu.tar.gz" 		#for trusty version (14.04), leave it empty if not supported
+# Wallet (daemon) link
+WALLETLINK=$GITHUB_URL"/releases/download/"$PROJECT"_v"$VERSION"/"$PROJECT"-"$VERSION"-MN-x86_64-linux-gnu.tar.gz"
+# Snapshot file name
+SNAPSHOTFNAME="snapshot.zip"
+# Snapshot link
+SNAPSHOTLINK=$GITHUB_URL"/releases/download/"$PROJECT"_v"$VERSION"/"$SNAPSHOTFNAME
 
 DATADIRNAME="."$PROJECT											#datadir name
 DAEMONFILE=$PROJECT"d"											#daemon file name
@@ -50,6 +54,7 @@ function install_updates_and_firewall() {
 		sudo ufw allow $PORT
 		echo "y" | sudo ufw enable
 		sudo ufw status
+		sudo apt install unzip
 	fi
 }
 
@@ -62,17 +67,49 @@ function download_mn_wallet(){
 }
 
 function unzip_mn_wallet(){
-	echo -e " Unzippinging the wallet"
+	echo -e " Unzippinging the wallet \r"
 	tar -xvzf $WALLETFILENAME
 	[ $? -eq 0 ] && ec=0 || ec=1
 	[ $ec -eq 0 ] && echo -en $STATUS0 || echo -en $STATUS1
 }
 
 function delete_downloaded_file(){
-	echo -e " Deleting the file $WALLETFILENAME"
+	echo -e " Deleting the file $WALLETFILENAME \r"
 	rm $WALLETFILENAME
 	[ $? -eq 0 ] && ec=0 || ec=1
 	[ $ec -eq 0 ] && echo -en $STATUS0 || echo -en $STATUS1
+}
+
+function install_snapshot(){
+	#SNAPSHOTFNAME
+	#SNAPSHOTLINK
+	#Change directiory to the DATA FOLDER
+	cd $DATADIRNAME
+	
+	#Download snapshot file
+	echo -en "\n Downloading snapshot ${SNAPSHOTFNAME} \r"
+	cd ~ && wget $SNAPSHOTLINK &>>${LOGFILE}
+	[ $? -eq 0 ] && ec=0 || ec=1
+	if [[ $ec -eq 0 ]]
+	then
+		echo -en $STATUS0
+	else
+		echo -en "Snapshot not found. "$STATUS1
+		cd ..
+		return 1
+	fi
+		
+	#Unzip snapshot file
+	echo -e " Unzippinging the snapshot \r"
+	unzip $SNAPSHOTFNAME
+	[ $? -eq 0 ] && ec=0 || ec=1
+	[ $ec -eq 0 ] && echo -en $STATUS0 || echo -en $STATUS1
+	
+	#Delete the snapshot zip file
+	rm $SNAPSHOTFNAME
+	
+	#Change directiory to HOME
+	cd ..
 }
 
 function create_config_file(){
@@ -190,12 +227,14 @@ function print_devsupport_exit() {
 	download_mn_wallet
 	unzip_mn_wallet
 	delete_downloaded_file
-# 4.Create configuration file
+# 4.Download snapshot zip file, install and delete after
+	install_snapshot
+# 5.Create configuration file
 	create_config_file
-# 5.Create service: create file, enable & start service, show status
+# 6.Create service: create file, enable & start service, show status
 	create_service_config_file
 	create_service_and_enable_autostart
 	show_service_status
-# 6.Finish
+# 7.Finish
 	print_devsupport_exit
 
