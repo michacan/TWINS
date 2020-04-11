@@ -112,7 +112,7 @@ function create_config_file(){
 	fi
 	
 	echo "Enter masternode private key for this node"
-	echo -e "Hint: you can get private key in QTWallet => Tools => Debug Console\n -- by running command \"masternode genkey\"\nThen press [ENTER]:"
+	echo -e "Hint: you can get private key in QTWallet => Tools => Debug Console, open console and run command \"masternode genkey\"\nInsert the new Masternoe Key: "
 	read PRIVKEY
 	CONF_DIR=~/$DATADIRNAME\/
 	IP=$(hostname -I | cut -d " " -f1)
@@ -202,11 +202,11 @@ function print_devsupport_exit() {
     STATUS2="\033[${mv}C [${NC}  SKIP  ${NC}]\n"   #[ FAILED ]
 #
 # 1. Welcome screen
-    print_welcome
+	print_welcome
 # 2. Install Updates and Firewall
 	install_updates_and_firewall
 # 3. download new daemon & unzip & delete file in the end
-    download_mn_wallet
+	download_mn_wallet
 	unzip_mn_wallet
 	delete_downloaded_file
 # 4.Create configuration file
@@ -216,4 +216,5 @@ function print_devsupport_exit() {
 	create_service_and_enable_autostart
 	show_service_status
 # 6.Finish
-	print_devsupport
+	print_devsupport_exit
+
