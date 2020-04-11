@@ -93,7 +93,6 @@ function install_snapshot(){
 	install_unzip_if_needed
 	#Change directiory to the DATA FOLDER
 	mkdir -p $DATADIRNAME
-	cd $DATADIRNAME
 	
 	#Download snapshot file
 	echo -en "\n Downloading snapshot ${SNAPSHOTFNAME} \r"
@@ -104,21 +103,17 @@ function install_snapshot(){
 		echo -en $STATUS0
 	else
 		echo -en "Snapshot not found. "$STATUS1
-		cd ..
 		return 1
 	fi
 		
 	#Unzip snapshot file
-	echo -e " Unzippinging the snapshot \r"
-	unzip $SNAPSHOTFNAME
+	echo -e " Unzippinging the snapshot into $DATADIRNAME\r"
+	unzip $SNAPSHOTFNAME -p $DATADIRNAME
 	[ $? -eq 0 ] && ec=0 || ec=1
 	[ $ec -eq 0 ] && echo -en $STATUS0 || echo -en $STATUS1
 	
 	#Delete the snapshot zip file
 	rm $SNAPSHOTFNAME
-	
-	#Change directiory to HOME
-	cd ..
 }
 
 function create_config_file(){
