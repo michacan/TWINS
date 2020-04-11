@@ -9,32 +9,48 @@ PORT=37817
 # Project Name uppercase
 PROJ_U=${PROJECT^^}
 
-GITHUB_REPO="NewCapital/${PROJ_U}-Core"
-GITHUB_URL="https://github.com/${GITHUB_REPO}"
+GITHUB_REPO="NewCapital/"$PROJ_U"-Core"
+GITHUB_URL="https://github.com/"$GITHUB_REPO
 
-RELEASE_URL=$(curl -Ls -o /dev/null -w %{url_effective} ${GITHUB_URL}/releases/latest)
+RELEASE_URL=$(curl -Ls -o /dev/null -w %{url_effective} $GITHUB_URL/releases/latest)
 RELASE_TAG="${RELEASE_URL##*/}"
 VERSION="${RELASE_TAG##${PROJECT}_v}"
 
-LOGFILENAME="${PROJECT}-mn-install.log"
+LOGFILENAME=$PROJECT"-mn-install.log"
 
 # WALLET(DAEMON) LINKS
-WALLETLINK="${GITHUB_URL}/releases/download/${PROJECT}_v${VERSION}/${PROJECT}-${VERSION}-MN-x86_64-linux-gnu.tar.gz" 		#for trusty version (14.04), leave it empty if not supported
+WALLETLINK=$GITHUB_URL"/releases/download/"$PROJECT"_v"$VERSION"/"$PROJECT"-"$VERSION"-MN-x86_64-linux-gnu.tar.gz" 		#for trusty version (14.04), leave it empty if not supported
 #
-WALLETDIR="${PROJECT}"                   #wallet instalation directory name
-BASICNAME="${PROJECT}"
-DATADIRNAME=".${PROJECT}"                #datadir name
+WALLETDIR=$PROJECT												#wallet instalation directory name
+DATADIRNAME="."$PROJECT											#datadir name
 
-DAEMONFILE="${PROJECT}d"                 #daemon file name
-CLIFILE="${PROJECT}-cli"                 #cli file name
-CONF_FILE="${PROJECT}.conf"              #conf file name
-SERVICEFILE="/etc/systemd/system/${PROJ_U}.service"
+DAEMONFILE=$PROJECT"d"											#daemon file name
+CLIFILE=$PROJECT"-cli"											#cli file name
+CONF_FILE=$PROJECT".conf"										#conf file name
+SERVICEFILE="/etc/systemd/system/"$PROJ_U".service"				#service file name
+
+
+echo "PROJECT=$PROJECT"
+echo "PROJ_U=$PROJ_U"
+echo "GITHUB_REPO=$GITHUB_REPO"
+echo "GITHUB_URL=$GITHUB_URL"
+echo "RELEASE_URL=$RELEASE_URL"
+echo "RELASE_TAG=$RELASE_TAG"
+echo "VERSION="$VERSION
+echo "LOGFILENAME="$LOGFILENAME
+echo "WALLETLINK="$WALLETLINK
+echo "WALLETDIR="$WALLETDIR
+echo "DATADIRNAME="$DATADIRNAME
+echo "DAEMONFILE="$DAEMONFILE
+echo "CLIFILE="$CLIFILE
+echo "CONF_FILE="$CONF_FILE
+echo "SERVICEFILE="$SERVICEFILE
 
 function print_welcome() {
-    echo -e "  This script will install your ${PROJ_U} masternode daemon to version ${VERSION}\n"
-    echo -e "  ${RED}WARNING: Running this script may require new masternode activation.${NC}\n"
+    echo -e "  This script is for fresh installed Ubuntu.\n It will install ${PROJ_U} masternode, version ${VERSION}\n"
+    echo -e "  ${RED}WARNING: Running this script will overwrite existing installation!${NC}\n"
     read -n1 -p " Press any key to continue or CTRL+C to exit ... " confirmtxt
-    echo
+    echo -e "  Starting new installation now...\n\n"
 }
 
 function install_updates_and_firewall() {
@@ -104,43 +120,42 @@ function create_config_file(){
 	[ $? -eq 0 ] && ec=0 || ec=1
 	[ $ec -eq 0 ] && echo -en $STATUS0 || echo -en $STATUS1
 	
-	echo "" > $CONF_DIR/$CONF_FILE
-	echo "rpcuser=user"`shuf -i 100000-10000000 -n 1` >> $CONF_DIR/$CONF_FILE
-	echo "rpcpassword=passw"`shuf -i 100000-10000000 -n 1` >> $CONF_DIR/$CONF_FILE
-	echo "rpcallowip=127.0.0.1" >> $CONF_DIR/$CONF_FILE
-	echo "server=1" >> $CONF_DIR/$CONF_FILE
-	echo "daemon=1" >> $CONF_DIR/$CONF_FILE
-	echo "logtimestamps=1" >> $CONF_DIR/$CONF_FILE
-	echo "maxconnections=256" >> $CONF_DIR/$CONF_FILE
-	echo "masternode=1" >> $CONF_DIR/$CONF_FILE
-	echo "externalip=$IP" >> $CONF_DIR/$CONF_FILE
-	echo "masternodeprivkey=$PRIVKEY" >> $CONF_DIR/$CONF_FILE
-	[ $? -eq 0 ] && ec=0 || ec=1
-	[ $ec -eq 0 ] && echo -en $STATUS0 || echo -en $STATUS1
+	echo "Creating config file"
+	echo "rpcuser=user"`shuf -i 100000-10000000 -n 1` >			$CONF_DIR/$CONF_FILE
+	echo "rpcpassword=passw"`shuf -i 100000-10000000 -n 1` >>	$CONF_DIR/$CONF_FILE
+	echo "rpcallowip=127.0.0.1" >>								$CONF_DIR/$CONF_FILE
+	echo "server=1" >>											$CONF_DIR/$CONF_FILE
+	echo "daemon=1" >>											$CONF_DIR/$CONF_FILE
+	echo "logtimestamps=1" >>									$CONF_DIR/$CONF_FILE
+	echo "maxconnections=256" >>								$CONF_DIR/$CONF_FILE
+	echo "masternode=1" >>										$CONF_DIR/$CONF_FILE
+	echo "externalip=$IP" >>									$CONF_DIR/$CONF_FILE
+	echo "masternodeprivkey=$PRIVKEY" >>						$CONF_DIR/$CONF_FILE
 }
 
 function create_service_config_file(){
-
-	echo "[Unit]" >> $SERVICEFILE
-	echo "Description=${PROJ_U} service" >> $SERVICEFILE
-	echo "After=network.target" >> $SERVICEFILE
-	echo "[Service]" >> $SERVICEFILE
-	echo "User=root" >> $SERVICEFILE
-	echo "Group=root" >> $SERVICEFILE
-	echo "Type=forking" >> $SERVICEFILE
+	echo "Creating service file"
+	
+	echo "[Unit]" > 								$SERVICEFILE
+	echo "Description=${PROJ_U} service" >>			$SERVICEFILE
+	echo "After=network.target" >>					$SERVICEFILE
+	echo "[Service]" >>								$SERVICEFILE
+	echo "User=root" >>								$SERVICEFILE
+	echo "Group=root" >>							$SERVICEFILE
+	echo "Type=forking" >>							$SERVICEFILE
 	echo "ExecStart=/root/${DAEMONFILE} -daemon" >> $SERVICEFILE
-	echo "ExecStop=/root/${CLIFILE} stop" >> $SERVICEFILE
-	echo "Restart=always" >> $SERVICEFILE
-	echo "PrivateTmp=true" >> $SERVICEFILE
-	echo "TimeoutStopSec=60s" >> $SERVICEFILE
-	echo "TimeoutStartSec=10s" >> $SERVICEFILE
-	echo "StartLimitInterval=120s" >> $SERVICEFILE
-	echo "StartLimitBurst=5" >> $SERVICEFILE
-	echo "[Install]" >> $SERVICEFILE
-	echo "WantedBy=multi-user.target" >> $SERVICEFILE
+	echo "ExecStop=/root/${CLIFILE} stop" >>		$SERVICEFILE
+	echo "Restart=always" >>						$SERVICEFILE
+	echo "PrivateTmp=true" >>						$SERVICEFILE
+	echo "TimeoutStopSec=60s" >>					$SERVICEFILE
+	echo "TimeoutStartSec=10s" >>					$SERVICEFILE
+	echo "StartLimitInterval=120s" >>				$SERVICEFILE
+	echo "StartLimitBurst=5" >>						$SERVICEFILE
+	echo "[Install]" >>								$SERVICEFILE
+	echo "WantedBy=multi-user.target" >>			$SERVICEFILE
 }
 
-function create_service_and_put_autostart(){
+function create_service_and_enable_autostart(){
 	echo "Starting $PROJ_U.service"
 	systemctl start $PROJ_U.service
 	[ $? -eq 0 ] && ec=0 || ec=1
@@ -157,11 +172,8 @@ function show_service_status(){
 }
 
 
-function print_devsupport() {
+function print_devsupport_exit() {
 	echo -e "\n Thank you for using this script.\n"
-}
-
-function exit_ok() {
     echo -e "\n${GREEN} Your masternode configured\n"
 	echo -e "You can check the sync status by running command: ${CLIFILE} getblockcount\n"
     echo " Exiting now..."
@@ -201,8 +213,7 @@ function exit_ok() {
 	create_config_file
 # 5.Create service: create file, enable & start service, show status
 	create_service_config_file
-	create_service_and_put_autostart
+	create_service_and_enable_autostart
 	show_service_status
 # 6.Finish
 	print_devsupport
-	exit_ok
