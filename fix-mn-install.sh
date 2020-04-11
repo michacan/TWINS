@@ -108,7 +108,7 @@ function install_snapshot(){
 		
 	#Unzip snapshot file
 	echo -e " Unzippinging the snapshot into $DATADIRNAME\r"
-	unzip $SNAPSHOTFNAME -p $DATADIRNAME
+	unzip $SNAPSHOTFNAME -d $DATADIRNAME
 	[ $? -eq 0 ] && ec=0 || ec=1
 	[ $ec -eq 0 ] && echo -en $STATUS0 || echo -en $STATUS1
 	
