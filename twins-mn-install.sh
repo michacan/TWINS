@@ -20,31 +20,12 @@ LOGFILENAME=$PROJECT"-mn-install.log"
 
 # WALLET(DAEMON) LINKS
 WALLETLINK=$GITHUB_URL"/releases/download/"$PROJECT"_v"$VERSION"/"$PROJECT"-"$VERSION"-MN-x86_64-linux-gnu.tar.gz" 		#for trusty version (14.04), leave it empty if not supported
-#
-WALLETDIR=$PROJECT												#wallet instalation directory name
-DATADIRNAME="."$PROJECT											#datadir name
 
+DATADIRNAME="."$PROJECT											#datadir name
 DAEMONFILE=$PROJECT"d"											#daemon file name
 CLIFILE=$PROJECT"-cli"											#cli file name
 CONF_FILE=$PROJECT".conf"										#conf file name
 SERVICEFILE="/etc/systemd/system/"$PROJ_U".service"				#service file name
-
-
-echo "PROJECT=$PROJECT"
-echo "PROJ_U=$PROJ_U"
-echo "GITHUB_REPO=$GITHUB_REPO"
-echo "GITHUB_URL=$GITHUB_URL"
-echo "RELEASE_URL=$RELEASE_URL"
-echo "RELASE_TAG=$RELASE_TAG"
-echo "VERSION="$VERSION
-echo "LOGFILENAME="$LOGFILENAME
-echo "WALLETLINK="$WALLETLINK
-echo "WALLETDIR="$WALLETDIR
-echo "DATADIRNAME="$DATADIRNAME
-echo "DAEMONFILE="$DAEMONFILE
-echo "CLIFILE="$CLIFILE
-echo "CONF_FILE="$CONF_FILE
-echo "SERVICEFILE="$SERVICEFILE
 
 function print_welcome() {
     echo -e "  This script is for fresh installed Ubuntu.\n It will install ${PROJ_U} masternode, version ${VERSION}\n"
