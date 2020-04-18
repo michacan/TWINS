@@ -69,7 +69,7 @@ function print_welcome() {
 function install_updates_and_firewall() {
 	echo -n "Do you want to install all needed updates and firewall settings (no if you did it before)? [y/n]: "
 	read -n1  DOSETUP
-	if [[ $DOSETUP =~ "y" ]] || [[ $DOSETUP =~ "Y" ]] ; then
+	if [[ ${#DOSETUP} -eq 0 ]] || [[ $DOSETUP =~ "y" ]] || [[ $DOSETUP =~ "Y" ]] ; then
 		sudo apt-get update            
 		sudo apt-get -y upgrade        
 		sudo apt-get -y dist-upgrade   
@@ -325,7 +325,7 @@ function show_service_status(){
 function help_print_how_to_run_mn_outputs(){
 	echo -en "\n Do you need a help to get "$ClrBld"collateral output txid"$NC" and "$ClrBld" index"$NC"? [y/n]: "
 	read -n1 ANSWER
-	if [[ ${#ANSWER} -eq 1 ]] && [[ $ANSWER =~ ^[yY] ]]; then
+	if [[ ${#ANSWER} -le 1 ]] && [[ $ANSWER =~ ^[yY] ]]; then
 		echo -e $ClrCya"\n\n In order to get "$ClrCyaBld"collateral output txid"$ClrCya" and "$ClrCyaBld" index"$ClrCya
 		echo -e " you need to open your "$PROJ_U" wallet, go to "$ClrCyaBld"Tools"$ClrCya" => "$ClrCyaBld"Debug Console"$ClrCya
 		echo -e " and run the command > "$ClrCyaBld"masternode outputs"$ClrCya
@@ -341,7 +341,7 @@ function help_print_how_to_run_mn_outputs(){
 function help_configure_user_masternode_conf_file(){
 	echo -n " Do you want to setup this MasterNode in your wallet \"masternode.conf\" file? [y/n]: "
 	read -n1 ANSWER
-	if [[ ${#ANSWER} -eq 0 ]] || [[ $ANSWER =~ ^[nN] ]]; then
+	if [[ $ANSWER =~ ^[nN] ]]; then
 		echo -e "\n"
 		return 0
     fi
