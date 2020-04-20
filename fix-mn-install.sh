@@ -40,7 +40,7 @@ function init_gui_vars() {
     ITA="\033[3m"
 	RED="\033[0;31m"
 	GREEN="\033[0;32m"
-	YELLOW="\033[0;33m"
+	YELLOW="\033[0;33m"                     ClrYelBld="\e[1;33m";
 	BLUE="\033[0;34m"
 	PURPLE="\033[0;35m"
 	CYAN="\033[0;36m";	ClrCya="\e[0;36m";	ClrCyaBld="\e[1;36m";	ClrCyaItl="\e[3;36m";	ClrCyaUnd="\e[4;36m";
@@ -173,18 +173,22 @@ function install_snapshot(){
 function get_ip(){
 	IP=$(hostname -I | cut -d " " -f1)
 	echo " Your recognised IP address is:$IP"
-	#sudo hostname -I | cut -d " " -f1
 	echo -n " Is this the IP you wish to use for MasterNode ? [y/n]: "
 	
-	read -n1 IPDEFAULT
-	
-	if [[ $IPDEFAULT =~ "y" ]] || [[ $IPDEFAULT =~ "Y" ]] ; then
-		echo -e "\n Great! IP: $IP will be used"
-	else
+	read -n1 ANSWER
+	if [[ ${ANSWER} =~ ^[nN] ]] ; then
 		echo -e "\n Type the custom IP of this node, followed by [ENTER]:"
 		read IP
-		echo " Great! IP: $IP will be used"
+		#Regex for number 0-255
+		REG_255="(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)"
+		IP_REGEX=^$REG_255\.$REG_255\.$REG_255\.$REG_255$
+		while [[ ! ${IP} =~ $IP_REGEX ]]
+		do
+			echo -en "\n Please provide a correct IPv4 address which consist of 4 numbers with points between them: "
+			read IP
+		done
 	fi
+	echo "IP: $IP will be used"
 }
 
 # This config file is used just to start deamon as a simple node, but not Masternode.
@@ -337,6 +341,23 @@ function help_print_how_to_run_mn_outputs(){
     fi
 }
 
+function install_pcregrep_if_needed(){
+	if ! [ -x "$(command -v pcregrep)" ];
+	then
+		echo -en "\n Installing pcregrep \r"
+		sudo apt install pcregrep > /dev/null
+		[ $? -eq 0 ] && ec=0 || ec=1
+		[ $ec -eq 0 ] && echo -en $STATUS0 || echo -en $STATUS1
+	fi
+}
+
+# Get INDEX for TXID (transaction id)
+function get_txid_index(){
+	install_pcregrep_if_needed
+	local tmp_val=$(./${CLIFILE} getrawtransaction $TXID)
+	INDEX=$(./${CLIFILE} decoderawtransaction $tmp_val  | pcregrep -M '"vout": \[(\n|.)*value*(\n|.)*value*(\n|.)*addresses' | pcregrep -M '"value": [1,5,20,100]000000.00000000,\n(\n|.)*"scriptPubKey"' | grep '"n"' | grep -o -E '[0-9]+' | head -1)
+}
+
 # Helps user to configure MN on Wallet
 function help_configure_user_masternode_conf_file(){
 	echo -n " Do you want to setup this MasterNode in your wallet \"masternode.conf\" file? [y/n]: "
@@ -368,20 +389,22 @@ function help_configure_user_masternode_conf_file(){
 		echo -e " "$RED" TXID shall be 64 hecadecimals!  Please check again!"$NC
 	done
 	
-	echo -en "\n Please provide "$ClrBld"INDEX"$NC" of the transaction: "
-	read INDEX
+	get_txid_index
+	if [[ $INDEX -ne 1 && $INDEX -ne 0 ]] ; then
+		echo -en "\n Please provide "$ClrBld"INDEX"$NC" of the transaction: "
+		read INDEX
+    fi
 
 	echo -e " Copy next row to the end of your wallet \"masternode.conf\" file:"
-	echo -e $ClrBld" "$MN_NAME" "$PRIVATE_KEY" "$TXID" "$INDEX$NC
-	echo -e "\n Press enter after you finished copying."
-	read INDEX
+	echo -e $ClrYelBld" "$MN_NAME" "$IP":"$PORT" "$PRIVATE_KEY" "$TXID" "$INDEX$NC"\n\n"
+	read -n 1 -s -r -p "Press any key to continue"
 }
 
 #synchronizing with blockchain
 function wait_finish_synchronizing_with_blockchain(){
-	echo -n " Would you like to see you MasterNode synchronization status? [y/n]: "
+	echo -e "\n\n Would you like to see you MasterNode synchronization status? [y/n]: "
 	read -n1 ANSWER
-	if [[ ${#ANSWER} -eq 0 ]] || [[ $ANSWER =~ ^[nN] ]]; then
+	if [[ $ANSWER =~ ^[nN] ]]; then
 		echo -e "\n"
 		return 0
     fi
@@ -394,7 +417,8 @@ function wait_finish_synchronizing_with_blockchain(){
 		SYNCD=$(./${CLIFILE} mnsync status | grep IsBlockchainSynced | grep -oE '(true|false)')
 		CURR_BLK=$(./${CLIFILE} getinfo | grep blocks | grep -oE '[0-9]*')
 		if [ $SYNCD == "true" ]; then
-			echo "\n Finished synchronizing block, last block "$CURR_BLK;
+			echo -e "\n Finished synchronizing block, last block "$CURR_BLK"\r";
+			echo -e $STATUS0
 			break;
 		fi
 		echo -en " Synchronizing blocks:  current block "$CURR_BLK"\r"
