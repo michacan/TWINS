@@ -463,8 +463,8 @@ function help_configure_user_masternode_conf_file(){
 
 function print_devsupport_exit() {
 	echo -e "\n===================================================================================="
-	echo -e "\n Thank you for using this script.\n"
     echo -e "\n${GREEN} Your masternode configured${NC}\n"
+	echo -e "\n Thank you for using this script.\n"
 	echo -e " Done\n Exiting now..."
     exit 0
 }
