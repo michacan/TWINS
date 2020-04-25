@@ -36,16 +36,16 @@ function init_gui_vars() {
 	# Defining colors for console
 	NC="\033[0m" # Text Reset
 	#Start bold text;	#Start NO bold text;	
-	ClrBld="\e[1m";	ClrNoBld="\e[21m";
-    ITA="\033[3m"
+	ColrBld="\e[1m";	ColrNoBld="\e[21m";
+	ITA="\033[3m"
 	RED="\033[0;31m"
 	GREEN="\033[0;32m"
-	YELLOW="\033[0;33m"                     ClrYelBld="\e[1;33m";
+	YELLOW="\033[0;33m"                     ColrYelBld="\e[1;33m";
 	BLUE="\033[0;34m"
 	PURPLE="\033[0;35m"
-	CYAN="\033[0;36m";	ClrCya="\e[0;36m";	ClrCyaBld="\e[1;36m";	ClrCyaItl="\e[3;36m";	ClrCyaUnd="\e[4;36m";
-    WHITE="\033[0;37m"
-    portlist=()
+	CYAN="\033[0;36m";	ColrCya="\e[0;36m";	ColrCyaBld="\e[1;36m";	ColrCyaItl="\e[3;36m";	ColrCyaUnd="\e[4;36m";
+	WHITE="\033[0;37m"
+	portlist=()
 
 # main procedure
     #SCRIPTPATH=$(readlink -f $0)
@@ -66,24 +66,31 @@ function print_welcome() {
     echo -e "  Starting new installation now...\n\n"
 }
 
-function install_updates_and_firewall() {
-	echo -n "Do you want to install all needed updates and firewall settings (no if you did it before)? [y/n]: "
-	read -n1  DOSETUP
-	if [[ ${#DOSETUP} -eq 0 ]] || [[ $DOSETUP =~ "y" ]] || [[ $DOSETUP =~ "Y" ]] ; then
-		sudo apt-get update            
-		sudo apt-get -y upgrade        
-		sudo apt-get -y dist-upgrade   
+function install_updates() {
+	sudo apt-get update -qq
+	sudo apt-get upgrade -qq
+	sudo apt-get dist-upgrade -qq
+	sudo apt-get install unzip -qq
+	sudo apt-get install pcregrep -qq
+	echo -en "Installing system updates/upgrades finished \r"$STATUS0
+}
 
-		sudo apt-get install -y ufw	   
-		sudo ufw allow ssh/tcp		   
-		sudo ufw limit ssh/tcp		   
-		sudo ufw logging on			   
-		sudo ufw allow 22			   
-		sudo ufw allow $PORT           
-		echo "y" | sudo ufw enable     
-		sudo ufw status                
-		echo -en "Installing system updates/upgrades finished \r"$STATUS0
+function install_firewall() {
+	echo -n "Do you want to install all needed firewall settings (no - only if you did it before)? [y/n]: "
+	read -n1 ANSWER
+	if [[ ${ANSWER} =~ ^[nN] ]] ; then
+		return 0;
 	fi
+	echo "";
+	sudo apt-get install ufw -qq 
+	sudo ufw allow ssh/tcp  
+	sudo ufw limit ssh/tcp
+	sudo ufw logging on
+	sudo ufw allow 22
+	sudo ufw allow $PORT
+	echo "y" | sudo ufw enable
+	sudo ufw status
+	echo -en "Installing firewall settings \r"$STATUS0
 }
 
 function download_mn_wallet(){
@@ -105,17 +112,6 @@ function unzip_mn_wallet(){
 	rm $WALLETFILENAME > /dev/null
 	[ $? -eq 0 ] && ec=0 || ec=1
 	[ $ec -eq 0 ] && echo -en $STATUS0 || echo -en $STATUS1
-}
-
-# Installing "unzip" command if missing
-function install_unzip_if_needed(){
-	if ! [ -x "$(command -v unzip)" ];
-	then
-		echo -en "\n Installing unzip \r"
-		sudo apt install unzip > /dev/null
-		[ $? -eq 0 ] && ec=0 || ec=1
-		[ $ec -eq 0 ] && echo -en $STATUS0 || echo -en $STATUS1
-	fi
 }
 
 # Help function to show progress while downloading file
@@ -143,7 +139,6 @@ function progressfilt (){
 
 # Download and install the snapshot of the masternode
 function install_snapshot(){
-	install_unzip_if_needed
 	#Change directiory to the DATA FOLDER
 	mkdir -p $DATADIRNAME
 	
@@ -160,8 +155,8 @@ function install_snapshot(){
 	fi
 		
 	#Unzip snapshot file
-	echo -en " Unzippinging the snapshot into $DATADIRNAME\r"
-	unzip $SNAPSHOTFNAME -d $DATADIRNAME  > /dev/null
+	echo -en " Unzippinging the snapshot into $DATADIRNAME folder\r"
+	unzip $SNAPSHOTFNAME -d $DATADIRNAME  > /dev/null 2>&1
 	[ $? -eq 0 ] && ec=0 || ec=1
 	[ $ec -eq 0 ] && echo -en $STATUS0 || echo -en $STATUS1
 	
@@ -188,7 +183,7 @@ function get_ip(){
 			read IP
 		done
 	fi
-	echo "IP: $IP will be used"
+	echo -e "\n IP: $IP will be used"
 }
 
 # This config file is used just to start deamon as a simple node, but not Masternode.
@@ -210,6 +205,9 @@ function run_empty_server(){
 	
 	local config_file_text=$(get_empty_config_file_text)
 	
+	#Change directiory to the DATA FOLDER
+	mkdir -p $DATADIRNAME
+	
 	echo -en " Writing config file for empty server \r"
 	echo -e $config_file_text > $DATADIRNAME/$CONF_FILE
 	[ $? -eq 0 ] && ec=0 || ec=1
@@ -217,23 +215,22 @@ function run_empty_server(){
 	
 	#run server
 	echo -e " Start empty server \r"
-	./$DAEMONFILE -daemon
+	./$DAEMONFILE -daemon  > /dev/null 2>&1
 	[ $? -eq 0 ] && ec=0 || ec=1
 	[ $ec -eq 0 ] && echo -en $STATUS0 || echo -en $STATUS1
+	sleep 3
 }
 
 # Generates PRIVATE_KEY by temporary server
 function generate_priv_key(){
 	echo -en " Creating new masternode private key \r"
 	PRIVATE_KEY=$(./$CLIFILE masternode genkey)
-	[ $? -eq 0 ] && ec=0 || ec=1
-	[ $ec -eq 0 ] && echo -en $STATUS0 || echo -en $STATUS1
-	echo -e " Created the private key: "$PRIVATE_KEY
-	if [[ $PRIVATE_KEY = error* ]]
-	then
+	if [ $? -gt 0 ]; then
+		echo -en $STATUS1
 		return 1
 	fi
-	
+	echo -en $STATUS0
+	echo -e " Created the private key: "$ColrCyaBld$PRIVATE_KEY${NC}
 	return 0
 }
 
@@ -244,8 +241,8 @@ function get_priv_key_from_user(){
 	read PRIVATE_KEY
 	if [ ${#PRIVATE_KEY} -eq 51 ]; then
 		return 0
-    fi
-	echo -e "The key length is wrong\nPlease update the config file later manually"
+	fi
+	echo -e "The private key length is wrong\nPlease update the config file later manually"
 	return 1
 }
 
@@ -256,7 +253,7 @@ function get_mastenode_config_file_text(){
 	generate_priv_key
 	if [ $? -eq 1 ]; then
         get_priv_key_from_user
-    fi
+	fi
 	
 	CONF_FILE_TEXT+="\nmasternode=1"
 	CONF_FILE_TEXT+="\nmasternodeprivkey="$PRIVATE_KEY	
@@ -266,7 +263,7 @@ function get_mastenode_config_file_text(){
 function run_full_server(){
 	get_mastenode_config_file_text
 	echo -e " Stop the server \n"
-	./$CLIFILE stop
+	./$CLIFILE stop > /dev/null 2>&1
 	[ $? -eq 0 ] && ec=0 || ec=1
 	[ $ec -eq 0 ] && echo -en $STATUS0 || echo -en $STATUS1
 	
@@ -308,116 +305,42 @@ function service_create_config_file(){
 # Make the new service auto-start 
 function service_start_autostart(){
 	echo -en " Starting $PROJ_U.service \r"
-	systemctl start $PROJ_U.service
+	systemctl start $PROJ_U.service > /dev/null 2>&1
 	[ $? -eq 0 ] && ec=0 || ec=1
 	[ $ec -eq 0 ] && echo -en $STATUS0 || echo -en $STATUS1
+	sleep 3
 	echo -en " Enabling $PROJ_U.service \r"
-	systemctl enable $PROJ_U.service
+	systemctl enable $PROJ_U.service > /dev/null 2>&1
 	[ $? -eq 0 ] && ec=0 || ec=1
 	[ $ec -eq 0 ] && echo -en $STATUS0 || echo -en $STATUS1
+	sleep 3
 }
 
 # Check service started
 function show_service_status(){
-	echo "Check service status: "
+	echo -en " Check service status: \r"
 	systemctl is-active --quiet $PROJ_U.service
 	[ $? -eq 0 ] && ec=0 || ec=1
 	[ $ec -eq 0 ] && echo -en $STATUS0 || echo -en $STATUS1
-}
-
-# Prints help to user to help run Debug Console on Wallet
-function help_print_how_to_run_mn_outputs(){
-	echo -en "\n Do you need a help to get "$ClrBld"collateral output txid"$NC" and "$ClrBld" index"$NC"? [y/n]: "
-	read -n1 ANSWER
-	if [[ ${#ANSWER} -le 1 ]] && [[ $ANSWER =~ ^[yY] ]]; then
-		echo -e $ClrCya"\n\n In order to get "$ClrCyaBld"collateral output txid"$ClrCya" and "$ClrCyaBld" index"$ClrCya
-		echo -e " you need to open your "$PROJ_U" wallet, go to "$ClrCyaBld"Tools"$ClrCya" => "$ClrCyaBld"Debug Console"$ClrCya
-		echo -e " and run the command > "$ClrCyaBld"masternode outputs"$ClrCya
-		echo -e " You will get something like:\n\n"$NC
-		echo -e "[\n  {\n    \"txhash\": \"614adb84de8c61283ebdea656ef3e410af9c2399e999933f2f11c7766d468801\",\n    \"outputidx\": 1\n  },"
-		echo -e  "\n  {\n    \"txhash\": \"f3ba782ebde69be9048ee570b8e7b2caa388e68da5afd999208e0641e7b361cc\",\n    \"outputidx\": 0\n  }\n]"
-		echo -e " \nWhich means you got two MN outputs"
-		echo -e " Select the TXID (txhash) that you want to configure now\n"
-    fi
-}
-
-function install_pcregrep_if_needed(){
-	if ! [ -x "$(command -v pcregrep)" ];
-	then
-		echo -en "\n Installing pcregrep \r"
-		sudo apt install pcregrep > /dev/null
-		[ $? -eq 0 ] && ec=0 || ec=1
-		[ $ec -eq 0 ] && echo -en $STATUS0 || echo -en $STATUS1
-	fi
-}
-
-# Get INDEX for TXID (transaction id)
-function get_txid_index(){
-	install_pcregrep_if_needed
-	local tmp_val=$(./${CLIFILE} getrawtransaction $TXID)
-	INDEX=$(./${CLIFILE} decoderawtransaction $tmp_val  | pcregrep -M '"vout": \[(\n|.)*value*(\n|.)*value*(\n|.)*addresses' | pcregrep -M '"value": [1,5,20,100]000000.00000000,\n(\n|.)*"scriptPubKey"' | grep '"n"' | grep -o -E '[0-9]+' | head -1)
-}
-
-# Helps user to configure MN on Wallet
-function help_configure_user_masternode_conf_file(){
-	echo -n " Do you want to setup this MasterNode in your wallet \"masternode.conf\" file? [y/n]: "
-	read -n1 ANSWER
-	if [[ $ANSWER =~ ^[nN] ]]; then
-		echo -e "\n"
-		return 0
-    fi
-	
-	echo -en "\n FYI: Master Node name can be anything\n Please provide a name for this MasterNode: "
-	read MN_NAME
-	while [ ${#MN_NAME} -eq 0 ]; do
-		echo -e " ${RED} The name can't be empty string!${NC}\n Please provide a name for this MasterNode: "
-		read MN_NAME
-	done
-	
-	echo -en " Do you know your "$ClrBld"collateral output txid"$NC" and "$ClrBld" index"$NC" from your wallet? [y/n]: "
-	read -n1 ANSWER
-	if [[ ${#ANSWER} -eq 1 ]] && [[ $ANSWER =~ ^[nN] ]]; then
-		help_print_how_to_run_mn_outputs
-    fi
-	#Regex
-	TXID_REGEX="^[a-fA-F0-9]{64}$"
-	while true
-	do
-		echo -en "\n Please provide "$ClrBld"TXID"$NC" of the transaction: "
-		read TXID
-		[[ $TXID =~ $TXID_REGEX ]] && break
-		echo -e " "$RED" TXID shall be 64 hecadecimals!  Please check again!"$NC
-	done
-	
-	get_txid_index
-	if [[ $INDEX -ne 1 && $INDEX -ne 0 ]] ; then
-		echo -en "\n Please provide "$ClrBld"INDEX"$NC" of the transaction: "
-		read INDEX
-    fi
-
-	echo -e " Copy next row to the end of your wallet \"masternode.conf\" file:"
-	echo -e $ClrYelBld" "$MN_NAME" "$IP":"$PORT" "$PRIVATE_KEY" "$TXID" "$INDEX$NC"\n\n"
-	read -n 1 -s -r -p "Press any key to continue"
 }
 
 #synchronizing with blockchain
 function wait_finish_synchronizing_with_blockchain(){
 	echo -e "\n\n Would you like to see you MasterNode synchronization status? [y/n]: "
 	read -n1 ANSWER
-	if [[ $ANSWER =~ ^[nN] ]]; then
+	if [[ ${ANSWER} =~ ^[nN] ]]; then
 		echo -e "\n"
 		return 0
-    fi
+	fi
 	
-
 	local SYNCD=""
 	local CURR_BLK=""
 	
 	while true; do
 		SYNCD=$(./${CLIFILE} mnsync status | grep IsBlockchainSynced | grep -oE '(true|false)')
 		CURR_BLK=$(./${CLIFILE} getinfo | grep blocks | grep -oE '[0-9]*')
-		if [ $SYNCD == "true" ]; then
-			echo -e "\n Finished synchronizing block, last block "$CURR_BLK"\r";
+		if [ ${SYNCD} == "true" ]; then
+			echo -e "\n Finished synchronizing blockchain, last block "$CURR_BLK"\r";
 			echo -e $STATUS0
 			break;
 		fi
@@ -432,9 +355,110 @@ function wait_finish_synchronizing_with_blockchain(){
 			echo -en $STATUS0
 			break
 		fi
+		echo -en "                                                                                               \r"
 		echo -en " Waiting for masternode synchronization: MasternodeAssets = "$SYNCD"\r"
 		sleep 5
 	done
+}
+
+# Prints help to user to help run Debug Console on Wallet
+function help_print_how_to_run_mn_outputs(){
+	echo -en "\n Do you need a help to get "$ColrBld"collateral output txid"$NC" and "$ColrBld" index"$NC"? [y/n]: "
+	read -n1 ANSWER
+	if [[ ${#ANSWER} -le 1 ]] && [[ ${ANSWER} =~ ^[yY] ]]; then
+		echo -e $ColrCya"\n\n In order to get "$ColrCyaBld"collateral output txid"$ColrCya" and "$ColrCyaBld" index"$ColrCya
+		echo -e " you need to open your "$PROJ_U" wallet, go to "$ColrCyaBld"Tools"$ColrCya" => "$ColrCyaBld"Debug Console"$ColrCya
+		echo -e " and run the command > "$ColrCyaBld"masternode outputs"$ColrCya
+		echo -e " You will get something like:\n\n"$NC
+		echo -e "[\n  {\n    \"txhash\": \"614adb84de8c61283ebdea656ef3e410af9c2399e999933f2f11c7766d468801\",\n    \"outputidx\": 1\n  },"
+		echo -e  "\n  {\n    \"txhash\": \"f3ba782ebde69be9048ee570b8e7b2caa388e68da5afd999208e0641e7b361cc\",\n    \"outputidx\": 0\n  }\n]"
+		echo -e " \nWhich means you got two MN outputs"
+		echo -e " Select the TXID (txhash) that you want to configure now\n"
+	fi
+}
+
+# Get INDEX for TXID (transaction id)
+function get_txid_index(){
+	local tmp_val=$(./${CLIFILE} getrawtransaction $TXID 2>/dev/null )
+	if [[ ${tmp_val} == "" || $? -gt 0 ]]; then
+		echo -e " This TXID doesn't exist yet"
+		while true; do
+			SYNCD=$(./${CLIFILE} mnsync status 2>/dev/null | grep IsBlockchainSynced 2>/dev/null | grep -oE '(true|false)' 2>/dev/null )
+			CURR_BLK=$(./${CLIFILE} getinfo 2>/dev/null | grep blocks | grep -oE '[0-9]*' )
+			tmp_val=$(./${CLIFILE} getrawtransaction $TXID 2>/dev/null )
+			if [ ${SYNCD} == "true" ]; then
+				echo -e "\n Finished synchronizing blockchain, last block $ColrCya"$CURR_BLK"$NC\r";
+				echo -e $STATUS0
+				break;
+			fi
+			echo -en " Wait for synchronizing blocks:  current block "$CURR_BLK"\r"
+			sleep 3
+		done
+	fi
+	tmp_val=$(./${CLIFILE} getrawtransaction $TXID 2>/dev/null )
+	if [[ ${tmp_val} == "" || $? -gt 0 ]] ; then
+		return 1
+	fi
+	INDEX=$(./${CLIFILE} decoderawtransaction $tmp_val  | pcregrep -M '"vout": \[(\n|.)*value*(\n|.)*value*(\n|.)*addresses' | pcregrep -M '"value": [1,5,20,100]000000.00000000,\n(\n|.)*"scriptPubKey"' | grep '"n"' | grep -o -E '[0-9]+' | head -1)
+	if [[ $INDEX -ne 1 && $INDEX -ne 0 ]] ; then
+		return 1
+	fi
+	return 0
+}
+
+# Helps user to configure MN on Wallet
+function help_configure_user_masternode_conf_file(){
+	echo -n " Do you want to setup this MasterNode in your wallet \"masternode.conf\" file? [y/n]: "
+	read -n1 ANSWER
+	if [[ ${ANSWER} =~ ^[nN] ]]; then
+		echo -e "\n"
+		return 0
+	fi
+	
+	echo -en "\n FYI: Master Node name can be anything\n Please provide a name for this MasterNode: "
+	read MN_NAME
+	while [ ${#MN_NAME} -eq 0 ]; do
+		echo -e " ${RED} The name can't be empty string!${NC}\n Please provide a name for this MasterNode: "
+		read MN_NAME
+	done
+	
+	echo -en " Do you know your "$ColrBld"collateral output txid"$NC" and "$ColrBld" index"$NC" from your wallet? [y/n]: "
+	read -n1 ANSWER
+	if [[ ${#ANSWER} -eq 1 ]] && [[ ${ANSWER} =~ ^[nN] ]]; then
+		help_print_how_to_run_mn_outputs
+	fi
+	
+	#Regex
+	TXID_REGEX="^[a-fA-F0-9]{64}$"
+	while true
+	do
+		echo -en "\n Please provide "$ColrBld"TXID"$NC" of the transaction: "
+		read TXID
+		[[ ${TXID} =~ $TXID_REGEX ]] && break
+		echo -e " "$RED" TXID shall be 64 hecadecimals!  Please check again!"$NC
+	done
+	INDEX=-1
+	get_txid_index
+	if [ $? -eq 1 ]; then
+        echo -e " ${RED}This TXID was not found in the blockchain after synchronization${NC}"
+		read -p "Are you sure you want to continue configure your local wallet y/[n]?" -n 1 -r
+		echo    # (optional) move to a new line
+		if [[ ! $REPLY =~ ^[Yy]$ ]]
+		then
+			return 1
+		fi
+	fi
+		
+	
+	if [[ $INDEX -ne 1 && $INDEX -ne 0 ]] ; then
+		echo -en "\n Please provide "$ColrBld"INDEX"$NC" of the transaction: "
+		read INDEX
+	fi
+
+	echo -e " Copy next row to the end of your wallet \"masternode.conf\" file:"
+	echo -e $ColrYelBld" "$MN_NAME" "$IP":"$PORT" "$PRIVATE_KEY" "$TXID" "$INDEX$NC"\n\n"
+	read -n 1 -s -r -p "Press any key to continue"
+	return 0
 }
 
 function print_devsupport_exit() {
@@ -451,7 +475,8 @@ function print_devsupport_exit() {
 # 1. Welcome screen
 	print_welcome
 # 2. Install Updates and Firewall
-	install_updates_and_firewall
+	install_updates
+	install_firewall
 # 3. download new daemon & unzip & delete file in the end
 	download_mn_wallet
 	unzip_mn_wallet
@@ -464,10 +489,9 @@ function print_devsupport_exit() {
 	service_create_config_file
 	service_start_autostart
 	show_service_status
-# 7.Configure the MN in user's wallet
-	help_configure_user_masternode_conf_file
-# 8. Finish Synchronizing
+# 7. Finish Synchronizing
 	wait_finish_synchronizing_with_blockchain
+# 8.Configure the MN in user's wallet
+	help_configure_user_masternode_conf_file
 # 9.Finish
 	print_devsupport_exit
-
